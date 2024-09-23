@@ -1,9 +1,7 @@
 #[tokio::test]
 async fn health_check() {
-    let addr = newsletter::spawn().await;
-
+    let (addr, _) = tempo::spawn().await;
     let client = reqwest::Client::new();
-
     let res = client
         .get(format!("http://{}", addr))
         .header("Host", "localhost")

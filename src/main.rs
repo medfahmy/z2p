@@ -7,5 +7,5 @@
 
 #[tokio::main]
 async fn main() {
-    newsletter::run().await;
+    tempo::run().await
 }

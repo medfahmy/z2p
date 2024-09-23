@@ -1,10 +1,10 @@
 [package]
-name = "newsletter"
+name = "tempo"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = "0.7.5"
+axum = { version = "0.7.5", features = ["macros"] }
 axum-macros = "0.4.1"
 http = "1.1.0"
 tokio = { version = "1.37.0", features = ["rt-multi-thread"] }
@@ -17,7 +17,11 @@ hyper-util = "0.1.8"
 http-body-util = "0.1.2"
 tower = { version = "0.5.1", features = ["util"] }
 mime = "0.3.17"
-
+serde = { version = "1.0.210", features = ["serde_derive"] }
+sqlx = { version = "0.8.2", default-features = false, features = ["runtime-tokio-rustls", "macros", "postgres", "uuid", "chrono", "migrate"] }
+config = "0.14.0"
+uuid = { version = "1.10.0", features = ["v4"] }
+chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 
 [dev-dependencies]
 reqwest = "0.12.7"

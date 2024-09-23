@@ -1,3 +1,6 @@
+pub mod config;
+mod routes;
+
 use axum::{
     extract::ConnectInfo,
     http::StatusCode,
@@ -5,15 +8,19 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use http::header::CONTENT_TYPE;
+pub use config::Config;
+// use http::header::CONTENT_TYPE;
+use sqlx::PgPool;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::{
-    cors::{Any, CorsLayer},
-    services::ServeDir,
+    // cors::{Any, CorsLayer},
+    // services::ServeDir,
     trace::TraceLayer,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use uuid::Uuid;
+use sqlx::{Connection, PgConnection, Executor};
 
 pub async fn run() {
     tracing_subscriber::registry()
@@ -25,20 +32,34 @@ pub async fn run() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let router = create_router();
-    let addr = "0.0.0.0:8080";
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let config = Config::get();
+    let addr = format!("{}:{}", config.host, config.port);
+    let listener = TcpListener::bind(&addr).await.unwrap();
+    let pool = PgPool::connect(&config.db_url).await.unwrap();
+    let router = create_router(pool);
 
-    tracing::info!("Server listening on {}", addr);
-
+    tracing::info!("server listening on {}:{}", &config.host, &config.port);
     axum::serve(listener, router.into_make_service())
         .await
-        .unwrap()
+        .unwrap();
 }
 
-pub async fn spawn() -> SocketAddr {
-    let router = create_router();
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:0").await.unwrap();
+pub async fn spawn() -> (SocketAddr, PgPool) {
+    let pg_url = "postgres://postgres:postgres@localhost:5432";
+    let db_name = Uuid::new_v4().to_string();
+    let db_url = format!("{}/{}", pg_url, db_name);
+
+    let mut connection = PgConnection::connect(pg_url).await.unwrap();
+
+    connection
+        .execute(format!("create database \"{}\";", db_name).as_str())
+        .await
+        .unwrap();
+
+    let pool = PgPool::connect(&db_url).await.unwrap();
+    let router = create_router(pool.clone());
+
+    let listener = TcpListener::bind("0.0.0.0:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
 
     tokio::spawn(async move {
@@ -47,24 +68,24 @@ pub async fn spawn() -> SocketAddr {
             .unwrap()
     });
 
-    addr
+    (addr, pool)
 }
 
-fn create_router() -> Router {
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_headers([CONTENT_TYPE]);
-    let assets = ServeDir::new("assets");
+fn create_router(pool: PgPool) -> Router {
+    // let cors = CorsLayer::new()
+    //     .allow_origin(Any)
+    //     .allow_headers([CONTENT_TYPE]);
+    // let assets = ServeDir::new("assets");
 
     Router::new()
         .route("/", get(health_check))
-        .route("/subscribe", post(health_check))
+        .route("/sub", post(routes::sub))
         .route("/json", post(json))
         .route("/connect-info", get(connect_info))
         // .nest_service("/assets", assets)
         // .layer(cors)
-        // We can still add middleware
         .layer(TraceLayer::new_for_http())
+        .with_state(pool)
 }
 
 async fn health_check() -> impl IntoResponse {
