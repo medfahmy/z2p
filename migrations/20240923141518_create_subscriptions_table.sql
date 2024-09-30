@@ -1,4 +1,4 @@
-create table subs (
+create table subscriptions (
     id uuid not null,
     primary key (id),
     email text not null unique,

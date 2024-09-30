@@ -1,3 +1,10 @@
-host = "localhost"
+[server]
+host = "0.0.0.0"
 port = 8080
-db_url = "postgres://postgres:postgres@localhost:5432/tempo"
+
+[db]
+user = "postgres"
+pass = "postgres"
+host = "localhost"
+port = "5432"
+name = "tempo"

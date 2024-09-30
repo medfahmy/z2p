@@ -22,7 +22,8 @@ DB_PORT="${POSTGRES_PORT:=5432}"
 NB_CONN="${NB_CONN:=1000}"
 
 if [[ -z "${SKIP_DOCKER}" ]]; then
-    if ! [ -x docker ps -f name=postgres ]; then
+    if docker ps | grep postgres 
+    then
         docker stop postgres
         docker rm postgres
     fi
@@ -31,7 +32,6 @@ if [[ -z "${SKIP_DOCKER}" ]]; then
         --name postgres \
         -e POSTGRES_USER=${DB_USER} \
         -e POSTGRES_PASSWORD=${DB_PASS} \
-        -e POSTGRES_DB=${DB_NAME} \
         -p "${DB_PORT}":5432 \
         postgres -N "${NB_CONN}"
 
@@ -42,8 +42,7 @@ if [[ -z "${SKIP_DOCKER}" ]]; then
     done
 fi
 
-# >&2 echo "postgres is up and running on port ${DB_PORT}"
-
+>&2 echo "postgres is up and running on port ${DB_PORT}"
 
 DATABASE_URL=postgres://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 export DATABASE_URL
